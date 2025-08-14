@@ -1,0 +1,36 @@
+name: CI - Validar Pull Request
+
+on:
+  pull_request:
+    branches:
+      - 'staging'
+
+permissions:
+  contents: read
+  checks: write
+  pull-requests: read
+
+jobs:
+  run-flutter-tests:
+    name: Rodar Testes Unitários e de Widget
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout do Repositório
+        uses: actions/checkout@v4
+      - name: Setup Flutter SDK
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+          cache: true
+      - name: Instalar Dependências
+        run: flutter pub get
+      - name: Rodar Testes Automatizados
+        run: flutter test --machine > tests.json || exit-code
+        continue-on-error: true
+      - name: Publicar Relatório de Testes
+        uses: dorny/test-reporter@v1
+        if: always()
+        with:
+          name: "Resultados dos Testes"
+          path: tests.json
+          reporter: flutter-json
