@@ -39,7 +39,7 @@ jobs:
           path: tests.json
           reporter: flutter-json
 
-  # JOB 2: TESTES DE INTEGRAÇÃO (Versão final simplificada e robusta)
+  # JOB 2: TESTES DE INTEGRAÇÃO (Com a arquitetura correta do emulador)
   integration-tests:
     name: Integration Tests
     needs: unit-tests
@@ -62,9 +62,8 @@ jobs:
         with:
           api-level: 33
           target: google_apis
-          arch: x86_64
+          arch: arm64-v8a # <<< A CORREÇÃO FINAL ESTÁ AQUI
           # O script agora contém toda a lógica de animação e execução dos testes.
-          # A action garante que o emulador está 100% pronto antes de executar este bloco.
           script: |
             adb shell settings put global window_animation_scale 0.0
             adb shell settings put global transition_animation_scale 0.0
