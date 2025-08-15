@@ -1,9 +1,12 @@
+# .github/workflows/flutter-ci.yml
+
 name: CI - Validar Pull Request
 
 on:
   pull_request:
     branches:
       - 'staging'
+      - 'main'
 
 permissions:
   contents: read
@@ -11,8 +14,9 @@ permissions:
   pull-requests: read
 
 jobs:
-  run-flutter-tests:
-    name: Rodar Testes Unitários e de Widget
+  # JOB 1: TESTES UNITÁRIOS E DE WIDGET (Rápido)
+  unit-tests:
+    name: Unit & Widget Tests
     runs-on: ubuntu-latest
     steps:
       - name: Checkout do Repositório
@@ -24,13 +28,55 @@ jobs:
           cache: true
       - name: Instalar Dependências
         run: flutter pub get
-      - name: Rodar Testes Automatizados
+      - name: Rodar Testes Unitários e de Widget
         run: flutter test --machine > tests.json || exit-code
         continue-on-error: true
       - name: Publicar Relatório de Testes
         uses: dorny/test-reporter@v1
         if: always()
         with:
-          name: "Resultados dos Testes"
+          name: "Resultados dos Testes Unitários"
           path: tests.json
+          reporter: flutter-json
+
+  # JOB 2: TESTES DE INTEGRAÇÃO (Com a correção final de aceleração)
+  integration-tests:
+    name: Integration Tests
+    needs: unit-tests
+    runs-on: macos-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout do Repositório
+        uses: actions/checkout@v4
+      - name: Setup Flutter SDK
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+          cache: true
+      - name: Instalar Dependências
+        run: flutter pub get
+
+      - name: Run Integration Tests on Emulator
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 33
+          target: google_apis
+          arch: arm64-v8a
+          # Adicionamos a flag '-no-accel' para resolver o erro HVF
+          emulator-options: "-no-snapshot -no-window -no-audio -no-accel"
+          # O script abaixo roda DEPOIS que a action garante que o emulador está 100% pronto.
+          script: |
+            adb shell settings put global window_animation_scale 0.0
+            adb shell settings put global transition_animation_scale 0.0
+            adb shell settings put global animator_duration_scale 0.0
+            flutter test integration_test --machine > integration_tests.json || exit-code
+        continue-on-error: true
+
+      - name: Publicar Relatório de Testes de Integração
+        uses: dorny/test-reporter@v1
+        if: always()
+        with:
+          name: "Resultados dos Testes de Integração"
+          path: integration_tests.json
           reporter: flutter-json
