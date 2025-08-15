@@ -1,9 +1,12 @@
+# .github/workflows/flutter-ci.yml
+
 name: CI - Validar Pull Request
 
 on:
   pull_request:
     branches:
       - 'staging'
+      - 'main'
 
 permissions:
   contents: read
@@ -11,8 +14,9 @@ permissions:
   pull-requests: read
 
 jobs:
-  run-flutter-tests:
-    name: Rodar Testes Unitários e de Widget
+  # JOB 1: TESTES UNITÁRIOS E DE WIDGET (Rápido)
+  unit-tests:
+    name: Unit & Widget Tests
     runs-on: ubuntu-latest
     steps:
       - name: Checkout do Repositório
@@ -24,13 +28,49 @@ jobs:
           cache: true
       - name: Instalar Dependências
         run: flutter pub get
-      - name: Rodar Testes Automatizados
+      - name: Rodar Testes Unitários e de Widget
         run: flutter test --machine > tests.json || exit-code
         continue-on-error: true
       - name: Publicar Relatório de Testes
         uses: dorny/test-reporter@v1
         if: always()
         with:
-          name: "Resultados dos Testes"
+          name: "Resultados dos Testes Unitários"
           path: tests.json
           reporter: flutter-json
+
+  # JOB 2: TESTES DE INTEGRAÇÃO (Lento)
+  integration-tests:
+    # Nome de exibição do Job
+    name: Integration Tests
+    # A linha mais importante: este job SÓ RODA SE 'unit-tests' for bem-sucedido
+    needs: unit-tests
+    # Usamos macOS porque a aceleração de hardware para emuladores é melhor suportada
+    runs-on: macos-latest
+    # Testes de integração podem demorar, então definimos um timeout maior para o job todo.
+    timeout-minutes: 25
+
+    steps:
+      - name: Checkout do Repositório
+        uses: actions/checkout@v4
+      - name: Setup Flutter SDK
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+          cache: true
+      - name: Instalar Dependências
+        run: flutter pub get
+
+      # PASSO MÁGICO: Inicia o Emulador Android.
+      - name: Start Android Emulator
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          # Nível da API do Android que você quer usar.
+          api-level: 29
+          # Outras configurações opcionais como 'target', 'arch', etc.
+          # O script abaixo aceita as licenças do SDK automaticamente.
+          script: echo "no" | avdmanager create avd --force --name "test" --package "system-images;android-29;google_apis;x86_64"
+
+      # Roda os testes de integração. Note o comando diferente!
+      - name: Run Integration Tests
+        run: flutter test integration_test
