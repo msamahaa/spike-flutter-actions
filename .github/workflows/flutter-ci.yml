@@ -39,15 +39,11 @@ jobs:
           path: tests.json
           reporter: flutter-json
 
-  # JOB 2: TESTES DE INTEGRAÇÃO (Lento)
+  # JOB 2: TESTES DE INTEGRAÇÃO (Lento, Confiável e com Relatório)
   integration-tests:
-    # Nome de exibição do Job
     name: Integration Tests
-    # A linha mais importante: este job SÓ RODA SE 'unit-tests' for bem-sucedido
     needs: unit-tests
-    # Usamos macOS porque a aceleração de hardware para emuladores é melhor suportada
     runs-on: macos-latest
-    # Testes de integração podem demorar, então definimos um timeout maior para o job todo.
     timeout-minutes: 25
 
     steps:
@@ -61,21 +57,31 @@ jobs:
       - name: Instalar Dependências
         run: flutter pub get
 
-      # PASSO MÁGICO: Inicia o Emulador Android.
       - name: Start Android Emulator
         uses: reactivecircus/android-emulator-runner@v2
         with:
-          # Nível da API do Android que você quer usar.
-          api-level: 29
-          # Outras configurações opcionais como 'target', 'arch', etc.
-          # O script abaixo aceita as licenças do SDK automaticamente.
-          script: echo "no" | avdmanager create avd --force --name "test" --package "system-images;android-29;google_apis;x86_64"
+          api-level: 33 # API ATUALIZADA
+          script: echo "no" | avdmanager create avd --force --name "test" --package "system-images;android-33;google_apis;x86_64"
 
       - name: Wait for Emulator to Boot
         run: |
-        adb wait-for-device shell 'while [[ -z $(getprop sys.boot_completed | tr -d "\r") ]]; do sleep 1; done; input keyevent 82'
-        echo "Emulator is fully booted."
+          adb wait-for-device shell 'while [[ -z $(getprop sys.boot_completed | tr -d "\r") ]]; do sleep 1; done; input keyevent 82'
+          echo "Emulator is fully booted."
 
-      # Roda os testes de integração. Note o comando diferente!
+      - name: Disable Emulator Animations
+        run: |
+          adb shell settings put global window_animation_scale 0.0
+          adb shell settings put global transition_animation_scale 0.0
+          adb shell settings put global animator_duration_scale 0.0
+
       - name: Run Integration Tests
-        run: flutter test integration_test
+        run: flutter test integration_test --machine > integration_tests.json || exit-code
+        continue-on-error: true
+
+      - name: Publicar Relatório de Testes de Integração
+        uses: dorny/test-reporter@v1
+        if: always()
+        with:
+          name: "Resultados dos Testes de Integração"
+          path: integration_tests.json
+          reporter: flutter-json
