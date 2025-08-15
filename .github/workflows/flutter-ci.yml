@@ -63,6 +63,7 @@ jobs:
           api-level: 33
           target: google_apis
           arch: x86_64
+          script: echo "Emulator starting..."
 
       - name: Wait for Emulator to Boot
         run: |
