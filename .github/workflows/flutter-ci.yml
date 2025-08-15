@@ -14,7 +14,7 @@ permissions:
   pull-requests: read
 
 jobs:
-  # JOB 1: TESTES UNITÁRIOS E DE WIDGET
+  # JOB 1: TESTES UNITÁRIOS E DE WIDGET (Rápido)
   unit-tests:
     name: Unit & Widget Tests
     runs-on: ubuntu-latest
@@ -39,12 +39,12 @@ jobs:
           path: tests.json
           reporter: flutter-json
 
-  # JOB 2: TESTES DE INTEGRAÇÃO (Versão final definitiva e robusta)
+  # JOB 2: TESTES DE INTEGRAÇÃO (Com aceleração de hardware desabilitada)
   integration-tests:
     name: Integration Tests
     needs: unit-tests
     runs-on: macos-latest
-    timeout-minutes: 25
+    timeout-minutes: 30 # Aumentado, pois sem aceleração pode ser mais lento
 
     steps:
       - name: Checkout do Repositório
@@ -62,8 +62,9 @@ jobs:
         with:
           api-level: 33
           target: google_apis
-          arch: arm64-v8a # Garante compatibilidade com o runner M1/M2
-          emulator-options: "-no-snapshot -no-window -no-audio" # Opções para um boot limpo e rápido em CI
+          arch: arm64-v8a
+          emulator-options: "-no-snapshot -no-window -no-audio"
+          disable-acceleration: true # <<< A CORREÇÃO FINAL ESTÁ AQUI
           # O script abaixo roda DEPOIS que a action garante que o emulador está 100% pronto.
           script: |
             adb shell settings put global window_animation_scale 0.0
