@@ -71,6 +71,11 @@ jobs:
           # O script abaixo aceita as licenças do SDK automaticamente.
           script: echo "no" | avdmanager create avd --force --name "test" --package "system-images;android-29;google_apis;x86_64"
 
+      - name: Wait for Emulator to Boot
+        run: |
+        adb wait-for-device shell 'while [[ -z $(getprop sys.boot_completed | tr -d "\r") ]]; do sleep 1; done; input keyevent 82'
+        echo "Emulator is fully booted."
+
       # Roda os testes de integração. Note o comando diferente!
       - name: Run Integration Tests
         run: flutter test integration_test
