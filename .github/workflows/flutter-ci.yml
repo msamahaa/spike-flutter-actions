@@ -49,14 +49,6 @@ jobs:
     steps:
       - name: Checkout do Repositório
         uses: actions/checkout@v4
-
-      # PASSO DE DEBUG: Imprime o conteúdo do workflow para validação.
-      # Pode ser removido depois que o problema for resolvido.
-      - name: Show Workflow File Content
-        run: |
-          echo "Verificando o conteúdo do arquivo de workflow..."
-          cat .github/workflows/flutter-ci.yml
-
       - name: Setup Flutter SDK
         uses: subosito/flutter-action@v2
         with:
@@ -69,7 +61,8 @@ jobs:
         uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: 33
-          script: echo "no" | avdmanager create avd --force --name "test" --package "system-images;android-33;google_apis;x86_64"
+          target: google_apis
+          arch: x86_64
 
       - name: Wait for Emulator to Boot
         run: |
