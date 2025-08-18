@@ -1,36 +1,44 @@
-name: CI - Validar Pull Request
+# .github/workflows/flutter-ci.yml
+
+name: CI - Fase 1 - Testes Unitários
 
 on:
   pull_request:
-    branches:
-      - 'staging'
+    types: [opened, synchronize, reopened]
 
 permissions:
   contents: read
   checks: write
-  pull-requests: read
+  pull-requests: write
 
 jobs:
-  run-flutter-tests:
-    name: Rodar Testes Unitários e de Widget
+  unit-tests:
+    name: Unit & Widget Tests
     runs-on: ubuntu-latest
     steps:
       - name: Checkout do Repositório
         uses: actions/checkout@v4
+
       - name: Setup Flutter SDK
         uses: subosito/flutter-action@v2
         with:
           channel: 'stable'
           cache: true
+
       - name: Instalar Dependências
         run: flutter pub get
-      - name: Rodar Testes Automatizados
-        run: flutter test --machine > tests.json || exit-code
-        continue-on-error: true
-      - name: Publicar Relatório de Testes
-        uses: dorny/test-reporter@v1
-        if: always()
+
+      - name: Rodar Testes Unitários e de Widget
+        run: flutter test
+
+      - name: Post Instruction Comment
+        if: ${{ success() }}
+        uses: actions/github-script@v7
         with:
-          name: "Resultados dos Testes"
-          path: tests.json
-          reporter: flutter-json
+          script: |
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: '✅ Testes unitários passaram com sucesso!\n\n**Opcional:** Para rodar a suíte completa de testes de integração no Jenkins, comente nesta PR com a palavra-chave: `Erebor-CI`'
+            })
